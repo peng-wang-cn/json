@@ -3,7 +3,7 @@
 // |  |  |__   |  |  | | | |  version 3.11.3
 // |_____|_____|_____|_|___|  https://github.com/nlohmann/json
 //
-// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
+// SPDX-FileCopyrightText: 2013 - 2024 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
 #include "doctest_compatibility.h"
@@ -11,6 +11,11 @@
 // disable -Wnoexcept due to class Evil
 DOCTEST_GCC_SUPPRESS_WARNING_PUSH
 DOCTEST_GCC_SUPPRESS_WARNING("-Wnoexcept")
+
+// skip tests if JSON_DisableEnumSerialization=ON (#4384)
+#if defined(JSON_DISABLE_ENUM_SERIALIZATION) && (JSON_DISABLE_ENUM_SERIALIZATION == 1)
+    #define SKIP_TESTS_FOR_ENUM_SERIALIZATION
+#endif
 
 #include <nlohmann/json.hpp>
 using nlohmann::json;
@@ -52,17 +57,17 @@ struct address
 
 struct person
 {
-    age m_age{};
-    name m_name{};
-    country m_country{};
+    age m_age{}; // NOLINT(readability-redundant-member-init)
+    name m_name{}; // NOLINT(readability-redundant-member-init)
+    country m_country{}; // NOLINT(readability-redundant-member-init)
     person() = default;
     person(const age& a, name  n, const country& c) : m_age(a), m_name(std::move(n)), m_country(c) {}
 };
 
 struct contact
 {
-    person m_person{};
-    address m_address{};
+    person m_person{}; // NOLINT(readability-redundant-member-init)
+    address m_address{}; // NOLINT(readability-redundant-member-init)
     contact() = default;
     contact(person p, address a) : m_person(std::move(p)), m_address(std::move(a)) {}
 };
@@ -71,9 +76,9 @@ enum class book_id : std::uint64_t;
 
 struct contact_book
 {
-    name m_book_name{};
+    name m_book_name{}; // NOLINT(readability-redundant-member-init)
     book_id m_book_id{};
-    std::vector<contact> m_contacts{};
+    std::vector<contact> m_contacts{}; // NOLINT(readability-redundant-member-init)
     contact_book() = default;
     contact_book(name n, book_id i, std::vector<contact> c) : m_book_name(std::move(n)), m_book_id(i), m_contacts(std::move(c)) {}
 };
@@ -132,7 +137,11 @@ static void to_json(nlohmann::json& j, const contact& c)
 
 static void to_json(nlohmann::json& j, const contact_book& cb)
 {
-    j = json{{"name", cb.m_book_name}, {"id", cb.m_book_id}, {"contacts", cb.m_contacts}};
+    j = json{{"name", cb.m_book_name},
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
+        {"id", cb.m_book_id},
+#endif
+        {"contacts", cb.m_contacts}};
 }
 
 // operators
@@ -222,7 +231,9 @@ static void from_json(const nlohmann::json& j, contact& c)
 static void from_json(const nlohmann::json& j, contact_book& cb)
 {
     cb.m_book_name = j["name"].get<name>();
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
     cb.m_book_id = j["id"].get<book_id>();
+#endif
     cb.m_contacts = j["contacts"].get<std::vector<contact>>();
 }
 } // namespace udt
@@ -253,14 +264,22 @@ TEST_CASE("basic usage" * doctest::test_suite("udt"))
         CHECK(json("Paris") == json(addr));
         CHECK(json(cpp_programmer) ==
               R"({"person" : {"age":23, "name":"theo", "country":"France"}, "address":"Paris"})"_json);
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
         CHECK(json(large_id) == json(static_cast<std::uint64_t>(1) << 63));
         CHECK(json(large_id) > 0u);
         CHECK(to_string(json(large_id)) == "9223372036854775808");
         CHECK(json(large_id).is_number_unsigned());
+#endif
 
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
         CHECK(
             json(book) ==
             R"({"name":"C++", "id":42, "contacts" : [{"person" : {"age":23, "name":"theo", "country":"France"}, "address":"Paris"}, {"person" : {"age":42, "country":"中华人民共和国", "name":"王芳"}, "address":"Paris"}]})"_json);
+#else
+        CHECK(
+            json(book) ==
+            R"({"name":"C++", "contacts" : [{"person" : {"age":23, "name":"theo", "country":"France"}, "address":"Paris"}, {"person" : {"age":42, "country":"中华人民共和国", "name":"王芳"}, "address":"Paris"}]})"_json);
+#endif
 
     }
 
@@ -272,7 +291,9 @@ TEST_CASE("basic usage" * doctest::test_suite("udt"))
         {
             const auto parsed_book = big_json.get<udt::contact_book>();
             const auto book_name = big_json["name"].get<udt::name>();
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
             const auto book_id = big_json["id"].get<udt::book_id>();
+#endif
             const auto contacts =
                 big_json["contacts"].get<std::vector<udt::contact>>();
             const auto contact_json = big_json["contacts"].at(0);
@@ -292,8 +313,10 @@ TEST_CASE("basic usage" * doctest::test_suite("udt"))
             CHECK(contact == cpp_programmer);
             CHECK(contacts == book.m_contacts);
             CHECK(book_name == udt::name{"C++"});
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
             CHECK(book_id == book.m_book_id);
             CHECK(book == parsed_book);
+#endif
         }
 
         SECTION("via explicit calls to get_to")
@@ -314,7 +337,9 @@ TEST_CASE("basic usage" * doctest::test_suite("udt"))
         {
             const udt::contact_book parsed_book = big_json;
             const udt::name book_name = big_json["name"];
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
             const udt::book_id book_id = big_json["id"];
+#endif
             const std::vector<udt::contact> contacts = big_json["contacts"];
             const auto contact_json = big_json["contacts"].at(0);
             const udt::contact contact = contact_json;
@@ -332,8 +357,10 @@ TEST_CASE("basic usage" * doctest::test_suite("udt"))
             CHECK(contact == cpp_programmer);
             CHECK(contacts == book.m_contacts);
             CHECK(book_name == udt::name{"C++"});
+#ifndef SKIP_TESTS_FOR_ENUM_SERIALIZATION
             CHECK(book_id == static_cast<udt::book_id>(42u));
             CHECK(book == parsed_book);
+#endif
         }
 #endif
     }
@@ -343,7 +370,7 @@ namespace udt
 {
 struct legacy_type
 {
-    std::string number{};
+    std::string number{}; // NOLINT(readability-redundant-member-init)
     legacy_type() = default;
     legacy_type(std::string n) : number(std::move(n)) {}
 };
@@ -616,7 +643,7 @@ struct small_pod
 
 struct non_pod
 {
-    std::string s{};
+    std::string s{}; // NOLINT(readability-redundant-member-init)
     non_pod() = default;
     non_pod(std::string S) : s(std::move(S)) {}
 };
