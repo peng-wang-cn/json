@@ -381,14 +381,16 @@ TEST_CASE("value conversion")
 
         SECTION("built-in arrays: 3D")
         {
+            // NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
             const int nbs[][2][3] = {\
                 {{0, 1, 2}, {3, 4, 5}}, \
                 {{10, 11, 12}, {13, 14, 15}}\
-            }; // NOLINT(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+            };
             int nbs2[][2][3] = {\
                 {{0, 0, 0}, {0, 0, 0}}, \
                 {{0, 0, 0}, {0, 0, 0}}\
-            }; // NOLINT(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+            };
+            // NOLINTEND(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
 
             const json j2 = nbs;
             j2.get_to(nbs2);
@@ -397,6 +399,7 @@ TEST_CASE("value conversion")
 
         SECTION("built-in arrays: 4D")
         {
+            // NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
             const int nbs[][2][2][3] = {\
                 {
                     \
@@ -408,7 +411,7 @@ TEST_CASE("value conversion")
                     {{20, 21, 22}, {23, 24, 25}}, \
                     {{30, 31, 32}, {33, 34, 35}}\
                 }\
-            }; // NOLINT(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+            };
             int nbs2[][2][2][3] = {\
                 {
                     \
@@ -420,7 +423,8 @@ TEST_CASE("value conversion")
                     {{0, 0, 0}, {0, 0, 0}}, \
                     {{0, 0, 0}, {0, 0, 0}}\
                 }\
-            }; // NOLINT(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+            };
+            // NOLINTEND(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
 
             const json j2 = nbs;
             j2.get_to(nbs2);
